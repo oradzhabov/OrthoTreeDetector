@@ -20,10 +20,14 @@ def main(solver_path, solver, filters_nb, layers_nb):
     print('Getting data...', flush=True)
     wnd1_str = '_'.join(map(str, wnd1))
     wnd2_str = '_'.join(map(str, wnd2))
+    o1, p1, shape1, cond1 = get_xy(proj_dir1, wnd1, True, filters_nb, layers_nb)
     X1, Y1, shape1, cond1 = get_xy(proj_dir1, wnd1, False, filters_nb, layers_nb)
-    X1_train, X1_test, Y1_train, Y1_test = train_test_split(X1, Y1, random_state=0, train_size=0.99)
+    #X1_train, X1_test, Y1_train, Y1_test = train_test_split(X1, Y1, random_state=0, train_size=0.99)
+    X1_train, X1_test, Y1_train, Y1_test = X1, np.empty(shape=(0, X1.shape[-1]), dtype=X1.dtype), Y1, np.empty(shape=0, dtype=Y1.dtype)
     X2, Y2, shape2, cond2 = get_xy(proj_dir2, wnd2, True, filters_nb, layers_nb)
     X2_train, X2_test, Y2_train, Y2_test = train_test_split(X2, Y2, random_state=0, train_size=0.5)
+
+    key_pos = np.where((Y1_train == 0) & (p1 != 0))[0]
 
     X_train = np.vstack([X1_train, X2_train])
     X_test = np.vstack([X1_test, X2_test])
@@ -41,6 +45,7 @@ def main(solver_path, solver, filters_nb, layers_nb):
     """
     sample_weight = compute_sample_weight(class_weight='balanced', y=np.hstack([Y1_train, Y2_train]))
     sample_weight[np.where(Y1_train == 0)] *= (np.count_nonzero(Y2_train == 1) + np.count_nonzero(Y2_train == 3)) / np.count_nonzero(Y1_train == 0)
+    sample_weight[key_pos] *= 10
 
     print('Data preprocessing...', flush=True)
     if False:
@@ -115,6 +120,14 @@ if __name__ == '__main__':
     # 8/3: 0.93/0.96/0.86(bad)/0.96/0.92
     # 4/3: 0.93/0.96/0.85(bad)/0.96/0.93
     # 2/3: 0.93/0.96/0.85(bad)/0.96/0.93. Seems like filters_nb has no effect
+    # multi 0 from test1 by 2
+    # 2/3: 0.92/0.96/0.85(tiny better, but too much false ground)/0.96/0.92
+    # Add Multi all from test1 by 2
+    # 2/3: 0.93/0.95/0.86(bad)/0.96/0.92
+    # Add Multi all from test1 by 5
+    # 2/3: 0.92/0.94/0.87/0.94/0.92
+    # Introduce key-areas, and Mult by 10 in key-points
+    # 2/3: 0.92/0.95/0.84(very good)/0.95(has errors, but not critical)/0.91. First SOLUTION. Probably key should be 5, not 10
     # =================================================================================================================
     _solver_name = _solver.__class__.__name__
     _solver_path = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}'
