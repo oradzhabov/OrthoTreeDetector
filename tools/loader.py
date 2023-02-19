@@ -43,8 +43,7 @@ def get_ndvi(ortho, walls_cosine, use_old_approach):
 
 def get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
     # note: np.float16 do not provide convergence in solvers with default iters
-    # todo: by some reason np.float16 resolves problem better. Except it, it spends more time for solver. WHY?
-    dtype = np.float16
+    dtype = np.float32
 
     ortho_fpath = f'{proj_dir}/tmp_ortho.tif'
     cosine_fpath = f'{proj_dir}/walls_cosine.tif'

@@ -18,12 +18,7 @@ def main(solver_dir, proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
     with open(solver_fpath, 'rb') as f:
         solver = pickle.load(f)
 
-    if True:
-        X = scaler.fit_transform(X)  # todo: Strange: better than scaler.transform(X)
-    else:
-        from sklearn import preprocessing
-        scaler = preprocessing.StandardScaler()
-        X = scaler.fit_transform(X)
+    X = scaler.transform(X)
 
     acc = solver.score(X, Y)
     acc_str = f'{acc:.2f}'
@@ -44,7 +39,7 @@ if __name__ == '__main__':
 
     _filters_nb, _layers_nb = 8, 3
     _solver_name = 'LogisticRegression'
-    _checkpoint = '0_0_5900_10000__0_0_5900_10000/0.89_0.91.defaultSolver'
+    _checkpoint = '0_0_2100_1800__0_0_8589_4308/0.93_0.96'
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
     main(_solver_dir, proj_dir1, wnd1, False, _filters_nb, _layers_nb)
