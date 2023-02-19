@@ -4,6 +4,7 @@ import rasterio as rio
 from rasterio.windows import Window
 from .gabor import build_filters
 from .ml import process_pyr
+from .ml import apply_filter, get_mean_std
 
 
 def get_ndvi(ortho, walls_cosine, use_old_approach):
@@ -61,9 +62,11 @@ def get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
 
     if filters_nb > 0:
         filters = build_filters(filters_nb)
-        features = process_pyr(w_cos, filters, layers_nb, dtype)
-    else:
+        features = process_pyr(w_cos, lambda x: apply_filter(x, filters, dtype), layers_nb, dtype)
+    elif filters_nb == 0:
         features = w_cos
+    else:
+        features = process_pyr(w_cos, lambda x: get_mean_std(x, -filters_nb), layers_nb, dtype)
 
     mask[mask_err] = 255
     features = np.dstack([features, bgr, hsv])

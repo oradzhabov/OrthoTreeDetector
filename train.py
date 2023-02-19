@@ -136,6 +136,10 @@ if __name__ == '__main__':
     # 2/4: 0.92/0.95/0.84/0.95/0.91. By metrics it looks like prev(2/3) checkpoint. Minor but smoothness.
     # 0/3: 0.91/0.94/0.84/0.94/0.90. Much worse but classes separated
     # 1/3: 0.91/0.95/0.84/0.95/0.90. So-so. Bit worse than 2/3.
+    # Testing new features: pyramids of mean/std from cos:
+    # -3/3: 0.92/0.95/0.84/0.95/0.90. SIMILAR LIKE 2/3?
+    # -3/4: 0.92/0.95/0.85/0.95/0.91
+    # -5/4: 0.92/0.95/0.84/0.95/0.91. Good, but has FP, as 2/3.
     # =================================================================================================================
     _solver_name = _solver.__class__.__name__
     _solver_path = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}'
