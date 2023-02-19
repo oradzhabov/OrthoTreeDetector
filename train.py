@@ -44,8 +44,7 @@ def main(solver_path, solver, filters_nb, layers_nb):
     sample_weight *= len(sample_weight)
     """
     sample_weight = compute_sample_weight(class_weight='balanced', y=np.hstack([Y1_train, Y2_train]))
-    sample_weight[np.where(Y1_train == 0)] *= (np.count_nonzero(Y2_train == 1) + np.count_nonzero(Y2_train == 3)) / np.count_nonzero(Y1_train == 0)
-    sample_weight[key_pos] *= 10
+    sample_weight[key_pos] *= 15
 
     print('Data preprocessing...', flush=True)
     if False:
@@ -126,8 +125,10 @@ if __name__ == '__main__':
     # 2/3: 0.93/0.95/0.86(bad)/0.96/0.92
     # Add Multi all from test1 by 5
     # 2/3: 0.92/0.94/0.87/0.94/0.92
-    # Introduce key-areas, and Mult by 10 in key-points
+    # Introduce key-areas, and Mult them by 10
     # 2/3: 0.92/0.95/0.84(very good)/0.95(has errors, but not critical)/0.91. First SOLUTION. Probably key should be 5, not 10
+    # remove not necessary weight scaler(2) and key-mult=15. It changes prod-mult from 2*10 to 15. Clever and better.
+    # 2/3: 0.92/0.95/0.84(little bit smoother)/0.95/0.91(little bit worse). Need complicate the model
     # =================================================================================================================
     _solver_name = _solver.__class__.__name__
     _solver_path = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}'
