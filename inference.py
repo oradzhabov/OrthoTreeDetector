@@ -40,6 +40,7 @@ if __name__ == '__main__':
     _filters_nb, _layers_nb = 2, 3
     _solver_name = 'LogisticRegression'
     _checkpoint = '0_0_2100_1800__0_0_8589_4308/0.92_0.95'
+    # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.97'
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
     main(_solver_dir, proj_dir1, wnd1, False, _filters_nb, _layers_nb)

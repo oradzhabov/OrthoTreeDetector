@@ -10,6 +10,7 @@ from tools.loader import get_xy
 
 proj_dir1 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\40562'; wnd1 = (0, 0, 2100, 1800)  # all, false positive
 proj_dir2 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53508'; wnd2 = (0, 0, 8589, 4308)  # half of all, GOOD for TRAIN TREE
+# Small training subset
 # wnd1 = (990, 210, 1670-990, 880-210)
 # wnd2 = (7530, 690, 8530-7530, 2340-690)
 
@@ -22,11 +23,12 @@ def main(solver_path, solver, filters_nb, layers_nb):
     wnd2_str = '_'.join(map(str, wnd2))
     o1, p1, shape1, cond1 = get_xy(proj_dir1, wnd1, True, filters_nb, layers_nb)
     X1, Y1, shape1, cond1 = get_xy(proj_dir1, wnd1, False, filters_nb, layers_nb)
-    #X1_train, X1_test, Y1_train, Y1_test = train_test_split(X1, Y1, random_state=0, train_size=0.99)
+    # X1_train, X1_test, Y1_train, Y1_test = train_test_split(X1, Y1, random_state=0, train_size=0.99)
     X1_train, X1_test, Y1_train, Y1_test = X1, np.empty(shape=(0, X1.shape[-1]), dtype=X1.dtype), Y1, np.empty(shape=0, dtype=Y1.dtype)
     X2, Y2, shape2, cond2 = get_xy(proj_dir2, wnd2, True, filters_nb, layers_nb)
     X2_train, X2_test, Y2_train, Y2_test = train_test_split(X2, Y2, random_state=0, train_size=0.5)
 
+    # Find where new logic change markers of proj1.
     key_pos = np.where((Y1_train == 0) & (p1 != 0))[0]
 
     X_train = np.vstack([X1_train, X2_train])
@@ -44,7 +46,8 @@ def main(solver_path, solver, filters_nb, layers_nb):
     sample_weight *= len(sample_weight)
     """
     sample_weight = compute_sample_weight(class_weight='balanced', y=np.hstack([Y1_train, Y2_train]))
-    sample_weight[key_pos] *= 15
+    coeff = len(Y1_train) / (len(key_pos) + 1)
+    sample_weight[key_pos] *= coeff
 
     print('Data preprocessing...', flush=True)
     if False:
@@ -129,6 +132,7 @@ if __name__ == '__main__':
     # 2/3: 0.92/0.95/0.84(very good)/0.95(has errors, but not critical)/0.91. First SOLUTION. Probably key should be 5, not 10
     # remove not necessary weight scaler(2) and key-mult=15. It changes prod-mult from 2*10 to 15. Clever and better.
     # 2/3: 0.92/0.95/0.84(little bit smoother)/0.95/0.91(little bit worse). Need complicate the model
+    #      0.91/0.97/0.83/0.86/0.89/ for small subset
     # =================================================================================================================
     _solver_name = _solver.__class__.__name__
     _solver_path = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}'
