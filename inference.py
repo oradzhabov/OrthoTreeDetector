@@ -25,8 +25,10 @@ def main(solver_dir, proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
     print(f'Accuracy: {acc_str}', flush=True)
     Y = np.zeros(shape[0]*shape[1], dtype=np.uint8)
     Y[cond] = solver.predict(X)
+    #Y[Y == 2] = 1  # TreeEdge became tree
+    #Y[Y == 4] = 0  # GreenSlopedGround became ground
     Y = Y.reshape(shape)
-    cv2.imwrite('predict.png', Y/3*255)
+    cv2.imwrite('predict.png', Y/np.max(Y)*255)
 
 
 if __name__ == '__main__':
@@ -39,8 +41,9 @@ if __name__ == '__main__':
 
     _filters_nb, _layers_nb = 2, 3
     _solver_name = 'LogisticRegression'
-    _checkpoint = '0_0_2100_1800__0_0_8589_4308/0.92_0.95'
-    # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.97'
+    # _checkpoint = '0_0_2100_1800__0_0_8589_4308/0.90_0.93'
+    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.87_0.93'
+    # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.95'
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
     main(_solver_dir, proj_dir1, wnd1, False, _filters_nb, _layers_nb)
