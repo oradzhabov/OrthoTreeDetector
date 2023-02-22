@@ -5,7 +5,9 @@ from sklearn import preprocessing
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics.pairwise import chi2_kernel
+from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_sample_weight
 from tools.loader import get_xy
@@ -13,10 +15,13 @@ from tools.loader import get_xy
 
 proj_dir1 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\40562'; wnd1 = (0, 0, 2100, 1800)  # all, false positive
 proj_dir2 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53508'; wnd2 = (0, 0, 8589, 4308)  # half of all, GOOD for TRAIN TREE
+#proj_dir3 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52654';
+proj_dir3 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\20861'; wnd3 = (0, 0, 59000, 10000)  # only trees
 if True:
     # Big areas with proper cross-class data
     wnd1 = (0, 0, 2100, 1800)
     wnd2 = (7682, 190, 8460-7682, 3976-190)
+    #wnd3 = (2166, 4941, 3804-2166, 6300-4941)
 else:
     # tiny areas for quick tests. Not really proper
     wnd1_ = (990, 210, 1670-990, 880-210)
@@ -24,7 +29,7 @@ else:
 
 
 def main(solver_path, solver, filters_nb, layers_nb):
-    assert layers_nb < 6
+    assert layers_nb < 7
 
     print('Getting data...', flush=True)
     wnd1_str = '_'.join(map(str, wnd1))
@@ -37,16 +42,21 @@ def main(solver_path, solver, filters_nb, layers_nb):
     X2, Y2, shape2, cond2 = get_xy(proj_dir2, wnd2, True, filters_nb, layers_nb)
     k2, l2, shape2, cond2 = get_xy(proj_dir2, wnd2, False, filters_nb, layers_nb)
     Y2[np.where((Y2 != 0) & (l2 == 0))[0]] = 2
-    I2_train, I2_test = train_test_split(np.arange(len(X2)), random_state=0, train_size=0.5)
+    I2_train, I2_test = train_test_split(np.arange(len(X2)), random_state=0, train_size=0.75)
+
+    X3, Y3, shape3, cond3 = get_xy(proj_dir3, wnd3, True, filters_nb, layers_nb)
+    k3, l3, shape3, cond3 = get_xy(proj_dir3, wnd3, False, filters_nb, layers_nb)
+    Y3[np.where((Y3 != 0) & (l3 == 0))[0]] = 2
+    I3_train, I3_test = train_test_split(np.arange(len(X3)), random_state=0, train_size=0.75)
 
     # Find where new logic change markers of proj1.
     #key_pos1 = np.where((p1[I1_train] != 0) & (Y1[I1_train] == 0))[0]  # new became 0. Highlight green sloped ground
     #key_pos2 = np.where((Y2[I2_train] != 0) & (l2[I2_train] == 0))[0]  # new became 0. Highlight green tree's edges
 
-    X_train = np.vstack([X1[I1_train], X2[I2_train]])
-    X_test = np.vstack([X1[I1_test], X2[I2_test]])
-    Y_train = np.hstack([Y1[I1_train], Y2[I2_train]])
-    Y_test = np.hstack([Y1[I1_test], Y2[I2_test]])
+    X_train = np.vstack([X1[I1_train], X2[I2_train], X3[I3_train]])
+    X_test = np.vstack([X1[I1_test], X2[I2_test], X3[I3_test]])
+    Y_train = np.hstack([Y1[I1_train], Y2[I2_train], Y3[I3_train]])
+    Y_test = np.hstack([Y1[I1_test], Y2[I2_test], Y3[I3_test]])
 
     """
     # ATTENTION: big various in weights make Solver very slower
@@ -79,8 +89,8 @@ def main(solver_path, solver, filters_nb, layers_nb):
         print(rfe.support_)
         print(rfe.ranking_)
 
-    print('Model fitting...', flush=True)
-    solver.fit(X_train, Y_train, sample_weight)
+    print(f'Model fitting: DIM:{len(X_train)}*{X_train.shape[-1]}', flush=True)
+    solver.fit(X_train.astype(np.float32), Y_train.astype(np.float32), sample_weight)
     tr_acc = solver.score(X_train, Y_train)
     tst_acc = solver.score(X_test, Y_test)
     tr_acc_str = f'{tr_acc:.2f}'
@@ -109,7 +119,7 @@ if __name__ == '__main__':
     # _solver = GaussianNB()
     # _solver = LinearDiscriminantAnalysis()  # 0.89/0.92(0.79)
     # _solver = QuadraticDiscriminantAnalysis(); X_train=X_train.astype(np.float32)  # 0.86/0.88(0.74)
-    # _solver = SVC()  # Too Long
+    # _solver = svm.SVC(kernel=chi2_kernel)  # Too Long
     # =================================================================================================================
     # filters_nb/layers_nb by log-res(saga) for mix of 2 datasets, float32, StdScaler, SampleWeights
     #      :Train/Val/Test1/Test2/Test3
@@ -148,7 +158,10 @@ if __name__ == '__main__':
     # -3/3: 0.90/0.93/0.76(worse then 2/3)/0.89/0.84
     # -5/3: 0.90/0.93/0.76/0.89/0.85  (quite long fitting)
     # Change training BBox to collect only proper cross-classes.
-    # 2/3: 0.87/0.93/0.79/0.83/0.84 (BEST)
+    #  2/3: 0.87/0.93/0.79/0.83/0.84(not well) (BEST)
+    # Added extra training data:
+    # > 2/3: 0.88/0.92/0.78(worse)/0.80/0.84(better)
+    # 6/3: 0.87/0.91/0.78/0.78/0.83 (worse)
     # =================================================================================================================
     _filters_nb, _layers_nb = 2, 3
     _solver_name = _solver.__class__.__name__

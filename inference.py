@@ -20,11 +20,12 @@ def main(solver_dir, proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
 
     X = scaler.transform(X)
 
-    acc = solver.score(X, Y)
+    # float32 force to not mapping into float64
+    acc = solver.score(X.astype(np.float32), Y.astype(np.float32))
     acc_str = f'{acc:.2f}'
     print(f'Accuracy: {acc_str}', flush=True)
     Y = np.zeros(shape[0]*shape[1], dtype=np.uint8)
-    Y[cond] = solver.predict(X)
+    Y[cond] = solver.predict(X.astype(np.float32))
     #Y[Y == 2] = 1  # TreeEdge became tree
     #Y[Y == 4] = 0  # GreenSlopedGround became ground
     Y = Y.reshape(shape)
@@ -38,14 +39,27 @@ if __name__ == '__main__':
     wnd2 = (0, 0, 8589, 4308)  # half of all, GOOD for TRAIN TREE
     proj_dir3 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52654'
     wnd3 = (0, 0, 5900, 10000)  # all pure new
+    proj_dir4 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\20861'
+    wnd4 = (0, 0, 59000, 10000)  # only trees
 
     _filters_nb, _layers_nb = 2, 3
     _solver_name = 'LogisticRegression'
     # _checkpoint = '0_0_2100_1800__0_0_8589_4308/0.90_0.93'
-    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.87_0.93'
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.32_0.40'  # -5/4 only pyr(cos, astd)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.33_0.37'  # -5/4 only pyr(cos, astd), with complex features
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.65_0.71'  # -5/4 pyr(cos, astd) + hsv
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.74_0.81'  # -5/4 pyr(cos, astd) + rgb
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.74_0.81'  # -5/4 pyr(cos, astd) + pyr(rgb)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.81_0.84'  # -5/4 pyr(cos, astd) + rgb + hsv
+    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.81_0.83'  # 2/3 pyr(cos, astd) + rgb + hsv
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.32_0.41'  # -5/5 only pyr(cos, astd)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.32_0.41'  # -3/5 only pyr(cos, astd)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.33_0.42'  # -3/6 only pyr(cos, astd)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.81_0.85'  # -3/6 pyr(cos, astd) + rgb + hsv
     # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.95'
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
     main(_solver_dir, proj_dir1, wnd1, False, _filters_nb, _layers_nb)
     # main(_solver_dir, proj_dir2, wnd2, True, _filters_nb, _layers_nb)
     # main(_solver_dir, proj_dir3, wnd3, True, _filters_nb, _layers_nb)
+    # main(_solver_dir, proj_dir4, wnd4, True, _filters_nb, _layers_nb)

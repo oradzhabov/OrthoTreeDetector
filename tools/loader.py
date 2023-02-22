@@ -4,7 +4,7 @@ import rasterio as rio
 from rasterio.windows import Window
 from .gabor import build_filters
 from .ml import process_pyr
-from .ml import apply_filter, get_mean_std
+from .ml import apply_filter, get_mean_std, get_brief_space, get_lbp_space
 
 
 def get_ndvi(ortho, walls_cosine, use_old_approach):

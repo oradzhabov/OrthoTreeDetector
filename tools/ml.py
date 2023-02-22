@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter
+from skimage.feature import BRIEF
+from skimage.transform import pyramid_gaussian, pyramid_expand
 
 
 def apply_filter(img, filters, dtype=np.float16):
@@ -14,30 +16,61 @@ def apply_filter(img, filters, dtype=np.float16):
 def get_mean_std(img, ksize):
     mu = gaussian_filter(img, sigma=ksize/3)
     mu2 = gaussian_filter(img * img, sigma=ksize/3)
-
     sigma = np.sqrt(mu2 - mu * mu)
-
-    #cv2.imwrite(f'img_0.png', (img / np.nanmax(img) * 255).astype(np.uint8))
-    #cv2.imwrite(f'img_1.png', (mu / np.nanmax(mu) * 255).astype(np.uint8))
-    #cv2.imwrite(f'img_2.png', (sigma / np.nanmax(sigma) * 255).astype(np.uint8))
-
     return list([mu, sigma])
+
+
+def get_lbp_space(img):
+    from skimage.feature import daisy
+    from skimage.feature import local_binary_pattern
+
+    radius = 3
+    n_points = 8 * radius
+    #n_points = 24
+    #radius = 8
+    METHOD = 'uniform'
+    lbp = local_binary_pattern(img, n_points, radius, METHOD)
+    res = np.sum(np.unpackbits(lbp.astype(np.uint8)).reshape(lbp.shape[0], lbp.shape[1], 8), axis=-1)
+    return [res]
+
+
+def get_brief_space(img, descriptor_size, get_bit_counts_only=False):
+    # https://stats.stackexchange.com/questions/89914/building-a-classification-model-for-strictly-binary-data
+    descriptor_extractor = BRIEF(descriptor_size=descriptor_size)
+
+    indices = np.meshgrid(np.arange(img.shape[0]), np.arange(img.shape[1]), sparse=False)
+    keypoints = np.stack(indices).T.reshape(-1, 2).astype(np.float32)
+    descriptor_extractor.extract(img, keypoints)
+    result = np.zeros(shape=(len(keypoints), descriptor_size), dtype=bool)
+    result[descriptor_extractor.mask] = descriptor_extractor.descriptors
+    result = result.reshape(img.shape[0], img.shape[1], descriptor_size)
+
+    if get_bit_counts_only:
+        result = np.sum(np.unpackbits(result.astype(np.uint8)).reshape(result.shape[0], result.shape[1], descriptor_size*8), axis=-1)
+        return [result]
+
+    result = np.moveaxis(result, -1, 0)  # channels first
+    result = [i for i in result]
+    return result
 
 
 def process_pyr(img, generator, layers_nb=3, dtype=np.float16):
     accum_ind_arr = list()
     shape_arr = list()
+    img_scaled = img.copy()
     for layer_ind in range(layers_nb):
-        stack = generator(img)
-        shape_arr.append(img.shape)
-        img = cv2.pyrDown(img, dstsize=(img.shape[1] // 2, img.shape[0] // 2))
+        stack = generator(img_scaled)
+        shape_arr.append(img_scaled.shape)
+        scale = 2**(layer_ind + 1)
+        img_scaled = cv2.resize(img, (img.shape[1] // scale, img.shape[0] // scale), interpolation=cv2.INTER_NEAREST)
         accum_ind_arr.append(stack)
     for layer_ind in range(1, layers_nb):
         for layer_ind2 in range(layer_ind, layers_nb):
             for i in range(len(accum_ind_arr[layer_ind2])):
-                accum_ind_arr[layer_ind2][i] = cv2.pyrUp(accum_ind_arr[layer_ind2][i].astype(np.float32),
-                                                         (accum_ind_arr[layer_ind2][i].shape[1]*2,
-                                                          accum_ind_arr[layer_ind2][i].shape[0]*2)).astype(dtype)
+                accum_ind_arr[layer_ind2][i] = cv2.resize(accum_ind_arr[layer_ind2][i].astype(np.float32),
+                                                          (accum_ind_arr[layer_ind2][i].shape[1]*2,
+                                                           accum_ind_arr[layer_ind2][i].shape[0]*2),
+                                                          interpolation=cv2.INTER_NEAREST).astype(dtype)
             ind = layer_ind2 - layer_ind
             if accum_ind_arr[layer_ind2][0].shape != shape_arr[ind]:
                 for i in range(len(accum_ind_arr[layer_ind2])):
