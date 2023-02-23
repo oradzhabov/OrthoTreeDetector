@@ -32,7 +32,7 @@ else:
     wnd2_ = (7530, 690, 8530-7530, 2340-690)
 
 
-def main(solver_path, solver, filters_nb, layers_nb, do_upsampling=False):
+def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
     assert layers_nb < 7
 
     print('Getting data...', flush=True)
@@ -63,12 +63,11 @@ def main(solver_path, solver, filters_nb, layers_nb, do_upsampling=False):
     Y_test = np.hstack([Y1[I1_test], Y2[I2_test], Y3[I3_test]])
 
     sample_weight = None
-    if do_upsampling:
+    if resampling_code:
         # Resample data for over sampling minority classes
-        max_samples = 0
-        for i in range(5):
-            if np.count_nonzero(Y_train == i) > max_samples:
-                max_samples = np.count_nonzero(Y_train == i)
+        samples_count = [np.count_nonzero(Y_train == i) for i in range(5)]
+        max_samples = max(samples_count)
+        min_samples = min(samples_count)
         X_arr = list()
         Y_arr = list()
         for i in range(5):
@@ -102,6 +101,21 @@ def main(solver_path, solver, filters_nb, layers_nb, do_upsampling=False):
         rfe = rfe.fit(X_train, Y_train)
         print(rfe.support_)
         print(rfe.ranking_)
+    if False:
+        from sklearn.model_selection import GridSearchCV
+        param_grid = {
+            #'hidden_layer_sizes': [(10,), (20,), (20, 10), (10, 20)],
+            #'max_iter': [50, 100, 150],
+            #'activation': ['tanh', 'relu'],  # tanh
+            #'solver': ['sgd', 'adam'],
+            'alpha': [0.0001, 0.05],
+            #'learning_rate_init': [0.1, 0.01, 0.001],
+            #'learning_rate': ['constant', 'adaptive'],  # constant
+        }
+        grid = GridSearchCV(solver, param_grid, n_jobs=-1, cv=5)
+        grid.fit(X_train, Y_train)
+        print(grid.best_params_)
+        exit(0)
 
     print(f'Model fitting: DIM:{len(X_train)}*{X_train.shape[-1]}', flush=True)
     if isinstance(solver, MLPClassifier):
@@ -136,10 +150,13 @@ if __name__ == '__main__':
     # + _solver = RandomForestClassifier(random_state=0, n_jobs=8). 3GB model, long processing. but 0.93 for new data
     _solver = MLPClassifier(random_state=0,
                             solver='adam',
-                            hidden_layer_sizes=(10,),
-                            max_iter=10,
-                            verbose=10,
-                            learning_rate_init=0.1)  # 0.91 for new data
+                            activation='tanh',  # tuned
+                            hidden_layer_sizes=(20, 10,),  # tuned
+                            max_iter=200,
+                            alpha=0.0001,  # tuned
+                            # verbose=10,
+                            learning_rate='constant',  # tuned
+                            learning_rate_init=0.02)
     # _solver = KNeighborsClassifier()
     # _solver = GaussianNB()
     # _solver = LinearDiscriminantAnalysis()  # 0.89/0.92(0.79)
@@ -189,6 +206,7 @@ if __name__ == '__main__':
     # 6/3: 0.87/0.91/0.78/0.78/0.83 (worse)
     # MLPClassifier, lr 0.1, layers 10, max iter 10
     # -3/4: 0.94/0.97/0.91(still not the best)/0.92/0.91(has issues but the best from all before)/0.84
+    # -3/4: 0.96/0.97/0.92/0.94/0.93/0.83; Tuned params. Even better than prev.
     # =================================================================================================================
     _filters_nb, _layers_nb = -3, 4
     _solver_name = _solver.__class__.__name__

@@ -63,7 +63,8 @@ if __name__ == '__main__':
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.91_0.93'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 40 layers ++
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.90_0.93'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 100 layers
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.93_0.95'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers
-    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.94_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers  +++
+    # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.94_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers  +++
+    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.96_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP  ++++
     # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.95'
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
@@ -72,3 +73,4 @@ if __name__ == '__main__':
     # main(_solver_dir, proj_dir3, wnd3, True, _filters_nb, _layers_nb)  # unobserved
     # main(_solver_dir, proj_dir4, wnd4, True, _filters_nb, _layers_nb)
     # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52521', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # bad data, with gaps/holes in reconstruction
+    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53501', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # old filter could resolve by own

@@ -24,7 +24,7 @@ def get_lbp_space(img):
     from skimage.feature import daisy
     from skimage.feature import local_binary_pattern
 
-    radius = 3
+    radius = 1
     n_points = 8 * radius
     #n_points = 24
     #radius = 8
@@ -46,7 +46,7 @@ def get_brief_space(img, descriptor_size, get_bit_counts_only=False):
     result = result.reshape(img.shape[0], img.shape[1], descriptor_size)
 
     if get_bit_counts_only:
-        result = np.sum(np.unpackbits(result.astype(np.uint8)).reshape(result.shape[0], result.shape[1], descriptor_size*8), axis=-1)
+        result = np.count_nonzero(result, axis=-1)
         return [result]
 
     result = np.moveaxis(result, -1, 0)  # channels first
