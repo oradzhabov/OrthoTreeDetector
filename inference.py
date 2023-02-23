@@ -42,8 +42,8 @@ if __name__ == '__main__':
     proj_dir4 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\20861'
     wnd4 = (0, 0, 59000, 10000)  # only trees
 
-    _filters_nb, _layers_nb = 2, 3
-    _solver_name = 'LogisticRegression'
+    _filters_nb, _layers_nb = -3, 4
+    _solver_name = 'MLPClassifier'
     # _checkpoint = '0_0_2100_1800__0_0_8589_4308/0.90_0.93'
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.32_0.40'  # -5/4 only pyr(cos, astd)
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.33_0.37'  # -5/4 only pyr(cos, astd), with complex features
@@ -51,15 +51,24 @@ if __name__ == '__main__':
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.74_0.81'  # -5/4 pyr(cos, astd) + rgb
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.74_0.81'  # -5/4 pyr(cos, astd) + pyr(rgb)
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.81_0.84'  # -5/4 pyr(cos, astd) + rgb + hsv
-    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.81_0.83'  # 2/3 pyr(cos, astd) + rgb + hsv
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.81_0.83'  # 2/3 pyr(cos, astd) + rgb + hsv
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.32_0.41'  # -5/5 only pyr(cos, astd)
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.32_0.41'  # -3/5 only pyr(cos, astd)
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.33_0.42'  # -3/6 only pyr(cos, astd)
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786/0.81_0.85'  # -3/6 pyr(cos, astd) + rgb + hsv
+    # RandomForestClassifier
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786/1.00_0.97'  # 2/3 pyr(cos, astd) + rgb + hsv
+    # MLPClassifier
+    # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.95_0.95'  # 2/3 pyr(cos, astd) + rgb + hsv
+    # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.91_0.93'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 40 layers ++
+    # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.90_0.93'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 100 layers
+    # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.93_0.95'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers
+    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.94_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers  +++
     # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.95'
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
     main(_solver_dir, proj_dir1, wnd1, False, _filters_nb, _layers_nb)
     # main(_solver_dir, proj_dir2, wnd2, True, _filters_nb, _layers_nb)
-    # main(_solver_dir, proj_dir3, wnd3, True, _filters_nb, _layers_nb)
+    # main(_solver_dir, proj_dir3, wnd3, True, _filters_nb, _layers_nb)  # unobserved
     # main(_solver_dir, proj_dir4, wnd4, True, _filters_nb, _layers_nb)
+    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52521', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # bad data, with gaps/holes in reconstruction

@@ -3,6 +3,9 @@ import pickle
 import numpy as np
 from sklearn import preprocessing
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.neighbors import KNeighborsClassifier
@@ -10,6 +13,7 @@ from sklearn.metrics.pairwise import chi2_kernel
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.utils import resample
 from tools.loader import get_xy
 
 
@@ -28,7 +32,7 @@ else:
     wnd2_ = (7530, 690, 8530-7530, 2340-690)
 
 
-def main(solver_path, solver, filters_nb, layers_nb):
+def main(solver_path, solver, filters_nb, layers_nb, do_upsampling=False):
     assert layers_nb < 7
 
     print('Getting data...', flush=True)
@@ -58,19 +62,29 @@ def main(solver_path, solver, filters_nb, layers_nb):
     Y_train = np.hstack([Y1[I1_train], Y2[I2_train], Y3[I3_train]])
     Y_test = np.hstack([Y1[I1_test], Y2[I2_test], Y3[I3_test]])
 
-    """
-    # ATTENTION: big various in weights make Solver very slower
-    sample_weight1 = compute_sample_weight(class_weight='balanced', y=Y1_train) / len(Y1_train)
-    sample_weight2 = compute_sample_weight(class_weight='balanced', y=Y2_train) / len(Y2_train)
-    sample_weight1 *= len(sample_weight2) / len(sample_weight1)
-    sample_weight = np.hstack([sample_weight1, sample_weight2])
-    sample_weight /= np.sum(sample_weight)
-    sample_weight *= len(sample_weight)
-    """
-    sample_weight = compute_sample_weight(class_weight='balanced', y=Y_train)
-    # c1 = len(I1_train) / (len(key_pos1) + 1)
-    # sample_weight[key_pos1] *= c1
-    # sample_weight[key_pos2 + len(I1_train)] *= c1 * len(key_pos2) / len(key_pos1)
+    sample_weight = None
+    if do_upsampling:
+        # Resample data for over sampling minority classes
+        max_samples = 0
+        for i in range(5):
+            if np.count_nonzero(Y_train == i) > max_samples:
+                max_samples = np.count_nonzero(Y_train == i)
+        X_arr = list()
+        Y_arr = list()
+        for i in range(5):
+            class_ind = (Y_train == i)
+            X_oversampled, Y_oversampled = resample(X_train[class_ind],
+                                                    Y_train[class_ind],
+                                                    replace=True,
+                                                    n_samples=max_samples,
+                                                    random_state=0)
+            X_arr.append(X_oversampled)
+            Y_arr.append(Y_oversampled)
+        X_train = np.vstack(X_arr)
+        Y_train = np.hstack(Y_arr)
+    else:
+        # ATTENTION: big various STD in weights make Solver slower
+        sample_weight = compute_sample_weight(class_weight='balanced', y=Y_train)
 
     print('Data preprocessing...', flush=True)
     if False:
@@ -90,7 +104,11 @@ def main(solver_path, solver, filters_nb, layers_nb):
         print(rfe.ranking_)
 
     print(f'Model fitting: DIM:{len(X_train)}*{X_train.shape[-1]}', flush=True)
-    solver.fit(X_train.astype(np.float32), Y_train.astype(np.float32), sample_weight)
+    if isinstance(solver, MLPClassifier):
+        solver.fit(X_train.astype(np.float32), Y_train.astype(np.float32))
+    else:
+        solver.fit(X_train.astype(np.float32), Y_train.astype(np.float32), sample_weight)
+
     tr_acc = solver.score(X_train, Y_train)
     tst_acc = solver.score(X_test, Y_test)
     tr_acc_str = f'{tr_acc:.2f}'
@@ -112,9 +130,16 @@ def main(solver_path, solver, filters_nb, layers_nb):
 
 if __name__ == '__main__':
     # Solver's explanations: https://stackoverflow.com/questions/38640109/logistic-regression-python-solvers-definitions
-    _solver = LogisticRegression(solver='saga', random_state=0, max_iter=100)
+    # + _solver = LogisticRegression(solver='saga', random_state=0, max_iter=100)
     # _solver = LogisticRegression()
     # _solver = DecisionTreeClassifier()
+    # + _solver = RandomForestClassifier(random_state=0, n_jobs=8). 3GB model, long processing. but 0.93 for new data
+    _solver = MLPClassifier(random_state=0,
+                            solver='adam',
+                            hidden_layer_sizes=(10,),
+                            max_iter=10,
+                            verbose=10,
+                            learning_rate_init=0.1)  # 0.91 for new data
     # _solver = KNeighborsClassifier()
     # _solver = GaussianNB()
     # _solver = LinearDiscriminantAnalysis()  # 0.89/0.92(0.79)
@@ -162,10 +187,13 @@ if __name__ == '__main__':
     # Added extra training data:
     # > 2/3: 0.88/0.92/0.78(worse)/0.80/0.84(better)
     # 6/3: 0.87/0.91/0.78/0.78/0.83 (worse)
+    # MLPClassifier, lr 0.1, layers 10, max iter 10
+    # -3/4: 0.94/0.97/0.91(still not the best)/0.92/0.91(has issues but the best from all before)/0.84
     # =================================================================================================================
-    _filters_nb, _layers_nb = 2, 3
+    _filters_nb, _layers_nb = -3, 4
     _solver_name = _solver.__class__.__name__
     _solver_path = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}'
 
-    main(_solver_path, _solver, _filters_nb, _layers_nb)
+    main(_solver_path, _solver, _filters_nb, _layers_nb, isinstance(_solver, MLPClassifier))
     print('Finished', flush=True)
+# https://michael-fuchs-python.netlify.app/2021/02/03/nn-multi-layer-perceptron-classifier-mlpclassifier/
