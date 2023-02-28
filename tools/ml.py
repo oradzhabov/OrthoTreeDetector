@@ -16,7 +16,10 @@ def apply_filter(img, filters, dtype=np.float16):
 def get_mean_std(img, ksize):
     mu = gaussian_filter(img, sigma=ksize/3)
     mu2 = gaussian_filter(img * img, sigma=ksize/3)
-    sigma = np.sqrt(mu2 - mu * mu)
+
+    sigma = mu2 - mu * mu
+    sigma[np.where(sigma < 0.0)] = 0.0
+    sigma = np.sqrt(sigma)
     return list([mu, sigma])
 
 

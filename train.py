@@ -14,60 +14,46 @@ from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils import resample
-from tools.loader import get_xy
+from tools.data_source import DataSource
 
-
-proj_dir1 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\40562'; wnd1 = (0, 0, 2100, 1800)  # all, false positive
-proj_dir2 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53508'; wnd2 = (0, 0, 8589, 4308)  # half of all, GOOD for TRAIN TREE
-#proj_dir3 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52654';
-proj_dir3 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\20861'; wnd3 = (0, 0, 59000, 10000)  # only trees
-if True:
-    # Big areas with proper cross-class data
-    wnd1 = (0, 0, 2100, 1800)
-    wnd2 = (7682, 190, 8460-7682, 3976-190)
-    #wnd3 = (2166, 4941, 3804-2166, 6300-4941)
-else:
-    # tiny areas for quick tests. Not really proper
-    wnd1_ = (990, 210, 1670-990, 880-210)
-    wnd2_ = (7530, 690, 8530-7530, 2340-690)
+c = 1
+data_src_arr = list()
+# data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/28101', 2, 0.75*c))  # lot of light trees. Has tree.geojson
+# data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/47269', 2, 0.75*c))  # lot of dark trees. Has tree.geojson
+## data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/40562', 4, 0.99*c, (0, 0, 2100, 1800),'wall_32719.geojson', 4))  # green slopes
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/40562', 4, 0.99*c, (0, 0, 2100, 1800)))  # green slopes
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/53508', 2, 0.75*c, (7682, 190, 8460-7682, 3976-190)))  # half of all, GOOD for TRAIN TREE
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/20861', 2, 0.75*c))  # only trees
 
 
 def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
     assert layers_nb < 7
 
     print('Getting data...', flush=True)
-    wnd1_str = '_'.join(map(str, wnd1))
-    wnd2_str = '_'.join(map(str, wnd2))
-    o1, p1, shape1, cond1 = get_xy(proj_dir1, wnd1, True, filters_nb, layers_nb)
-    X1, Y1, shape1, cond1 = get_xy(proj_dir1, wnd1, False, filters_nb, layers_nb)
-    Y1[np.where((p1 != 0) & (Y1 == 0))[0]] = 4
-    I1_train, I1_test = train_test_split(np.arange(len(X1)), random_state=0, train_size=0.99)
-    #
-    X2, Y2, shape2, cond2 = get_xy(proj_dir2, wnd2, True, filters_nb, layers_nb)
-    k2, l2, shape2, cond2 = get_xy(proj_dir2, wnd2, False, filters_nb, layers_nb)
-    Y2[np.where((Y2 != 0) & (l2 == 0))[0]] = 2
-    I2_train, I2_test = train_test_split(np.arange(len(X2)), random_state=0, train_size=0.75)
-
-    X3, Y3, shape3, cond3 = get_xy(proj_dir3, wnd3, True, filters_nb, layers_nb)
-    k3, l3, shape3, cond3 = get_xy(proj_dir3, wnd3, False, filters_nb, layers_nb)
-    Y3[np.where((Y3 != 0) & (l3 == 0))[0]] = 2
-    I3_train, I3_test = train_test_split(np.arange(len(X3)), random_state=0, train_size=0.75)
-
-    # Find where new logic change markers of proj1.
-    #key_pos1 = np.where((p1[I1_train] != 0) & (Y1[I1_train] == 0))[0]  # new became 0. Highlight green sloped ground
-    #key_pos2 = np.where((Y2[I2_train] != 0) & (l2[I2_train] == 0))[0]  # new became 0. Highlight green tree's edges
-
-    X_train = np.vstack([X1[I1_train], X2[I2_train], X3[I3_train]])
-    X_test = np.vstack([X1[I1_test], X2[I2_test], X3[I3_test]])
-    Y_train = np.hstack([Y1[I1_train], Y2[I2_train], Y3[I3_train]])
-    Y_test = np.hstack([Y1[I1_test], Y2[I2_test], Y3[I3_test]])
+    wnd_str = '__'.join(map(str, ['_'.join(map(str, d.wnd)) for d in data_src_arr]))
+    X_train = list()
+    Y_train = list()
+    X_test = list()
+    Y_test = list()
+    for d in data_src_arr:
+        x_tr, y_tr, x_tst, y_tst = d.load(filters_nb, layers_nb, False)
+        X_train.append(x_tr)
+        Y_train.append(y_tr)
+        X_test.append(x_tst)
+        Y_test.append(y_tst)
+    X_train = np.vstack(X_train)
+    X_test = np.vstack(X_test)
+    Y_train = np.hstack(Y_train)
+    Y_test = np.hstack(Y_test)
 
     sample_weight = None
     if resampling_code:
-        # Resample data for over sampling minority classes
+        # Resample data for over/under sampling minority/majority classes
         samples_count = [np.count_nonzero(Y_train == i) for i in range(5)]
+        print(f'Resampling. Source samples count: {samples_count}')
         max_samples = max(samples_count)
         min_samples = min(samples_count)
+        avg_samples = int(np.mean(samples_count)),
         X_arr = list()
         Y_arr = list()
         for i in range(5):
@@ -130,7 +116,7 @@ def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
     print(f'Accuracy on training set: {tr_acc_str}', flush=True)
     print(f'Accuracy on test set: {tst_acc_str}', flush=True)
 
-    solver_path = f'{solver_path}/{wnd1_str}__{wnd2_str}/{tr_acc_str}_{tst_acc_str}'
+    solver_path = f'{solver_path}/{wnd_str}/{tr_acc_str}_{tst_acc_str}'
     if not os.path.exists(solver_path):
         os.makedirs(solver_path, exist_ok=True)
     print(f'Storing model to folder {solver_path}', flush=True)
@@ -207,6 +193,8 @@ if __name__ == '__main__':
     # MLPClassifier, lr 0.1, layers 10, max iter 10
     # -3/4: 0.94/0.97/0.91(still not the best)/0.92/0.91(has issues but the best from all before)/0.84
     # -3/4: 0.96/0.97/0.92/0.94/0.93/0.83; Tuned params. Even better than prev.
+    # > -3/4: 0.96/0.98/0.92/0.95/0.95/0.93; Fixed labeling bug
+    # -3/4: 0.96/0.99/0.93/0.99/0.96/0.98; equalize hist. BAD. WRONG LABELING
     # =================================================================================================================
     _filters_nb, _layers_nb = -3, 4
     _solver_name = _solver.__class__.__name__

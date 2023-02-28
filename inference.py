@@ -9,7 +9,7 @@ def main(solver_dir, proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
     # X, Y, shape, cond = get_xy(proj_dir1, wnd1, False, filters_nb, layers_nb)  # 0.86(train: 0.93/0.95), 0.86(train: 0.94/0.96)[this worse than prev]; 0.84(train: 0.92/0.94). 0.83(train: 0.89/0.91)[better but still with errors], 0.80(train: 0.89/0.91)[much worse result]. 0.80(88/91)[best]. 0.73(83/87), 0.77(84/87)
     # X, Y, shape, cond = get_xy(proj_dir2, wnd2, True, filters_nb, layers_nb)  # 0.95(train: 0.93/0.95), 0.93(train: 0.94/0.96), 0.91(0.88/0.91) 0.86(83/87)
     # X, Y, shape, cond = get_xy(proj_dir3, wnd3, True, filters_nb, layers_nb)  # 0.91(train: 0.93/0.95), 0.93(train: 0.94/0.96). 0.91(train: 0.92/0.94), 0.86(0.89/0.91), 0.82(0.88/0.91), 0.66(83/87)[hmm], 0.60(84/87)[vow]. 0.82(0.88/0.91)
-    X, Y, shape, cond = get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb)
+    X, Y, shape, cond = get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb, True)
 
     scaler_fpath = f'{solver_dir}/scaler.pkl'
     solver_fpath = f'{solver_dir}/solver.pkl'
@@ -64,7 +64,9 @@ if __name__ == '__main__':
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.90_0.93'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 100 layers
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.93_0.95'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.94_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers  +++
-    _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.96_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP  ++++
+    # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.96_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP  ++++
+    _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999/0.96_0.98'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP, fixed err  ++++
+    # _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999/0.96_0.99'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP, fixed err, update data, equalize hist  ---. Wrong Labeling
     # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.95'
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
@@ -74,3 +76,5 @@ if __name__ == '__main__':
     # main(_solver_dir, proj_dir4, wnd4, True, _filters_nb, _layers_nb)
     # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52521', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # bad data, with gaps/holes in reconstruction
     # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53501', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # old filter could resolve by own
+    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\47269', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # lot of dark trees
+    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\28101', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # Lot of false positives
