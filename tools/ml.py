@@ -15,7 +15,8 @@ def apply_filter(img, filters, dtype=np.float16):
 
 def get_mean_std(img, ksize):
     # Input could be np.uint8, which will corrupt data by following logic
-    img = img.astype(np.float32)
+    if not isinstance(img, np.ndarray) or (isinstance(img, np.ndarray) and img.dtype != np.float32):
+        img = img.astype(np.float32)
 
     mu = gaussian_filter(img, sigma=ksize/3)
     mu2 = gaussian_filter(img * img, sigma=ksize/3)

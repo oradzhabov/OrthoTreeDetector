@@ -49,14 +49,12 @@ def get_xy(proj_dir, wnd, sloped_is_ground_or_tree, filters_nb, layers_nb, is_in
         if src.nodata is not None:
             w_cos[w_cos == src.nodata] = np.nan
     w_cos = np.moveaxis(w_cos, 0, -1).squeeze()
-    cos_mask = ~np.isnan(w_cos)
     if is_inference:
         w_cos[np.isnan(w_cos)] = 1
     cv2.imwrite('w_cos.png', w_cos * 255)
     with rio.open(ortho_fpath) as src:
         bgr = src.read(None, window=Window(*wnd))
     bgr = np.moveaxis(bgr, 0, -1)[..., [2, 1, 0]]
-    # bgr = (equalize_hist(bgr, mask=cos_mask) * 255).astype(np.uint8)
     hsv = cv2.cvtColor(bgr.astype(np.uint8), cv2.COLOR_BGR2HSV)
     cv2.imwrite('w.png', bgr)
     mask, mask_err = get_ndvi(bgr, w_cos, sloped_is_ground_or_tree)
@@ -76,21 +74,23 @@ def get_xy(proj_dir, wnd, sloped_is_ground_or_tree, filters_nb, layers_nb, is_in
             mask[(w_cos < np.cos(np.radians(45))) & (~np.isnan(out_image))] = 4  # ATTENTION: expecting only tree mask so sloped only trees
 
     if filters_nb > 0:
+        features = np.empty(shape=(w_cos.shape[0], w_cos.shape[1], layers_nb * filters_nb + 4), dtype=dtype)
         filters = build_filters(filters_nb)
-        features = process_pyr(w_cos, lambda x: apply_filter(x, filters, dtype), layers_nb, dtype)
+        features[..., :layers_nb * filters_nb] = process_pyr(w_cos, lambda x: apply_filter(x, filters, dtype), layers_nb, dtype)
     elif filters_nb == 0:
-        features = w_cos
+        features = np.empty(shape=(w_cos.shape[0], w_cos.shape[1], 1 + 4), dtype=dtype)
+        features[..., :1] = w_cos
     else:
-        f1 = process_pyr(w_cos, lambda x: get_mean_std(x, -filters_nb), layers_nb, dtype)
-        f2 = process_pyr(w_cos, lambda x: [get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
-        f3 = process_pyr(w_cos, lambda x: [get_mean_std(get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
-        if True:
-            features = np.dstack([f1, f2, f3])
-        else:
+        features = np.empty(shape=(w_cos.shape[0], w_cos.shape[1], layers_nb * 4 + 4), dtype=dtype)
+        features[..., :layers_nb * 2] = process_pyr(w_cos, lambda x: get_mean_std(x, -filters_nb), layers_nb, dtype)
+        features[..., layers_nb * 2:layers_nb * 3] = process_pyr(w_cos, lambda x: [get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
+        features[..., layers_nb * 3:layers_nb * 4] = process_pyr(w_cos, lambda x: [get_mean_std(get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
+        if False:
             f4 = process_pyr(hsv[..., 0], lambda x: get_mean_std(x, -filters_nb), layers_nb, dtype)
             f5 = process_pyr(hsv[..., 0], lambda x: [get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
             f6 = process_pyr(hsv[..., 0], lambda x: [get_mean_std(get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
             features = np.dstack([f1, f2, f3, f4, f5, f6])
+
     save_channels = False
     if save_channels:
         for i in range(features.shape[-1]):
@@ -98,13 +98,13 @@ def get_xy(proj_dir, wnd, sloped_is_ground_or_tree, filters_nb, layers_nb, is_in
             cv2.imwrite(f'feature_{i}.png', (feature/np.nanmax(feature)*255).astype(np.uint8))
 
     mask[mask_err] = 255
-    features = np.dstack([features, bgr, hsv[..., 0]])  # seems with bgr, hsv has only [0]-channel valuable. todo: Maybe [0,1]-channels have better accuracy? [2]-ch definetely defined earlier as mean in pyramid.
-    # features = features[..., [0, 4, 5]]  # RFE suggests using: Cos,Hue,Saturation
+    features[..., features.shape[-1] - 4:features.shape[-1] - 1] = bgr
+    features[..., features.shape[-1] - 1] = hsv[..., 0]  # seems with bgr, hsv has only [0]-channel valuable. todo: Maybe [0,1]-channels have better accuracy? [2]-ch definetely defined earlier as mean in pyramid.
     X = features.reshape(-1, features.shape[-1])
     Y = mask.reshape(-1)
 
     # cond = np.where(np.all(X!=0, axis=-1))
-    cond = np.where(~np.any(np.isnan(X), axis=-1) & (Y != 255))
+    cond = np.where(~np.any(np.isnan(X), axis=-1) & (Y != 255))[0]
     X = X[cond]
     Y = Y[cond]
 

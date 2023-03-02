@@ -1,3 +1,4 @@
+import gc
 import os
 import cv2
 import pickle
@@ -6,9 +7,6 @@ from tools.loader import get_xy
 
 
 def main(solver_dir, proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
-    # X, Y, shape, cond = get_xy(proj_dir1, wnd1, False, filters_nb, layers_nb)  # 0.86(train: 0.93/0.95), 0.86(train: 0.94/0.96)[this worse than prev]; 0.84(train: 0.92/0.94). 0.83(train: 0.89/0.91)[better but still with errors], 0.80(train: 0.89/0.91)[much worse result]. 0.80(88/91)[best]. 0.73(83/87), 0.77(84/87)
-    # X, Y, shape, cond = get_xy(proj_dir2, wnd2, True, filters_nb, layers_nb)  # 0.95(train: 0.93/0.95), 0.93(train: 0.94/0.96), 0.91(0.88/0.91) 0.86(83/87)
-    # X, Y, shape, cond = get_xy(proj_dir3, wnd3, True, filters_nb, layers_nb)  # 0.91(train: 0.93/0.95), 0.93(train: 0.94/0.96). 0.91(train: 0.92/0.94), 0.86(0.89/0.91), 0.82(0.88/0.91), 0.66(83/87)[hmm], 0.60(84/87)[vow]. 0.82(0.88/0.91)
     X, Y, shape, cond = get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb, True)
 
     scaler_fpath = f'{solver_dir}/scaler.pkl'
@@ -18,23 +16,31 @@ def main(solver_dir, proj_dir, wnd, use_old_approach, filters_nb, layers_nb):
     with open(solver_fpath, 'rb') as f:
         solver = pickle.load(f)
 
-    X = scaler.transform(X)
+    indices = np.arange(len(X))
+    indices_subarr = np.array_split(indices, max(1, int(len(indices) / 1e+7)))
+    for ind_arr in indices_subarr:
+        X[ind_arr] = scaler.transform(X[ind_arr])
+    gc.collect()
 
     # float32 force to not mapping into float64
-    acc = solver.score(X.astype(np.float32), Y.astype(np.float32))
+    X = X.astype(np.float32)
+    Y = Y.astype(np.float32)
+
+    Y_ = np.zeros(shape[0] * shape[1], dtype=np.uint8)
+    acc_arr = list()
+    for ind_arr in indices_subarr:
+        acc_arr.append(solver.score(X[ind_arr], Y[ind_arr]))
+        Y_[cond[ind_arr]] = solver.predict(X[ind_arr])
+    acc = sum(acc_arr) / len(acc_arr)
     acc_str = f'{acc:.2f}'
     print(f'Accuracy: {acc_str}', flush=True)
-    Y = np.zeros(shape[0]*shape[1], dtype=np.uint8)
-    Y[cond] = solver.predict(X.astype(np.float32))
-    #Y[Y == 2] = 1  # TreeEdge became tree
-    #Y[Y == 4] = 0  # GreenSlopedGround became ground
-    Y = Y.reshape(shape)
-    cv2.imwrite('predict.png', Y/np.max(Y)*255)
+    Y_ = Y_.reshape(shape)
+    cv2.imwrite('predict.png', Y_/np.max(Y_)*255)
 
 
 if __name__ == '__main__':
     proj_dir1 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\40562'
-    wnd1 = (0, 0, 2100, 1800)  # all, false positive
+    wnd1 = (0, 0, 2100999, 1800999)  # all, false positive
     proj_dir2 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53508'
     wnd2 = (0, 0, 8589, 4308)  # half of all, GOOD for TRAIN TREE
     proj_dir3 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52654'
@@ -72,7 +78,8 @@ if __name__ == '__main__':
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.94_0.94'  # min/0.1(-3/4 astd/astd2/astd3)
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.97_0.96'  # min/0.1(-3/6 astd/astd2/astd3)
     #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.96_0.95'  # min/0.1(-3/6///
-    _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.95_0.96'   # max/1(-3/4 astd/astd2/astd3) adam
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.95_0.96'   # max/1(-3/4 astd/astd2/astd3) adam
+    _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.96_0.96'  # max/1(-3/4 astd/astd2/astd3) sgd, alpha=0.001
     #
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 

@@ -96,12 +96,12 @@ def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
         param_grid = {
             #'hidden_layer_sizes': [(10,), (20,), (20, 10), (10, 20)],
             #'max_iter': [50, 100, 150],
-            #'activation': ['tanh', 'relu'],  # tanh
-            #'solver': ['sgd', 'adam'],
-            'alpha': [0.0001, 0.05],
+            'activation': ['tanh', 'relu'],  # tanh
+            'solver': ['sgd', 'adam'],
+            'alpha': [0.0001, 0.001, 0.01],
             #'learning_rate_init': [0.1, 0.01, 0.001],
             #'learning_rate': ['constant', 'adaptive'],  # constant
-        }
+        }  # {'activation': 'tanh', 'alpha': 0.001, 'solver': 'sgd'}
         grid = GridSearchCV(solver, param_grid, n_jobs=-1, cv=5)
         grid.fit(X_train, Y_train)
         print(grid.best_params_)
@@ -138,11 +138,11 @@ if __name__ == '__main__':
     # _solver = DecisionTreeClassifier()
     # + _solver = RandomForestClassifier(random_state=0, n_jobs=8). 3GB model, long processing. but 0.93 for new data
     _solver = MLPClassifier(random_state=0,
-                            solver='adam',  # sgd. todo: final training should be SGD. Check max_iter accordingly
+                            solver='sgd',  # sgd. todo: final training should be SGD. Check max_iter accordingly
                             activation='tanh',  # tuned: tanh
                             hidden_layer_sizes=(30, 10,),  # tuned
-                            max_iter=200,  # 2000 for sgd
-                            alpha=0.0001,  # tuned. https://scikit-learn.org/stable/auto_examples/neural_networks/plot_mlp_alpha.html
+                            max_iter=2000,  # 2000 for sgd
+                            alpha=0.001,  # tuned. https://scikit-learn.org/stable/auto_examples/neural_networks/plot_mlp_alpha.html
                             # verbose=10,
                             learning_rate='constant',  # tuned
                             learning_rate_init=0.02)
@@ -200,6 +200,7 @@ if __name__ == '__main__':
     # -3/4: 0.96/0.99/0.93/0.99/0.96/0.98; equalize hist. BAD. WRONG LABELING
     # =================================================================================================================
     # 2023.03.02. Data & Labeling changed for better tree-prediction. -3/4(astd/astd2/astd3, adam), 0.95/0.96/0.96/0.95/0.88
+    # -3/4: 0.96/0.96/0.97/0.95/0.90
     # =================================================================================================================
     _filters_nb, _layers_nb = -3, 4
     _solver_name = _solver.__class__.__name__
