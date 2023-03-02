@@ -18,12 +18,12 @@ from tools.data_source import DataSource
 
 c = 1
 data_src_arr = list()
-# data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/28101', 2, 0.75*c))  # lot of light trees. Has tree.geojson
-# data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/47269', 2, 0.75*c))  # lot of dark trees. Has tree.geojson
-## data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/40562', 4, 0.99*c, (0, 0, 2100, 1800),'wall_32719.geojson', 4))  # green slopes
-data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/40562', 4, 0.99*c, (0, 0, 2100, 1800)))  # green slopes
-data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/53508', 2, 0.75*c, (7682, 190, 8460-7682, 3976-190)))  # half of all, GOOD for TRAIN TREE
-data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/20861', 2, 0.75*c))  # only trees
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/40562', True, 0.99*c, (0, 0, 2100, 1800)))  # green slopes
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/53508', False, 0.75*c, (7682, 190, 8460-7682, 3976-190)))  # half of all, GOOD for TRAIN TREE
+## data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/20861', False, 0.75*c))  # only trees, red, yellow, cannot be detected
+#
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/28101', False, 0.75*c, mask_geojson='tree.geojson', mask_class=3))  # lot of light trees. Has tree.geojson
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/47269', False, 0.75*c, mask_geojson='tree.geojson', mask_class=3))  # lot of dark trees. Has tree.geojson
 
 
 def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
@@ -37,10 +37,12 @@ def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
     Y_test = list()
     for d in data_src_arr:
         x_tr, y_tr, x_tst, y_tst = d.load(filters_nb, layers_nb, False)
-        X_train.append(x_tr)
-        Y_train.append(y_tr)
-        X_test.append(x_tst)
-        Y_test.append(y_tst)
+        if len(y_tr) > 0:
+            X_train.append(x_tr)
+            Y_train.append(y_tr)
+        if len(y_tst) > 0:
+            X_test.append(x_tst)
+            Y_test.append(y_tst)
     X_train = np.vstack(X_train)
     X_test = np.vstack(X_test)
     Y_train = np.hstack(Y_train)
@@ -81,12 +83,14 @@ def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
 
+    print(f'Model dimensions: {len(X_train)}*{X_train.shape[-1]}', flush=True)
     if False:
         from sklearn.feature_selection import RFE
         rfe = RFE(solver)
         rfe = rfe.fit(X_train, Y_train)
         print(rfe.support_)
         print(rfe.ranking_)
+        exit(0)
     if False:
         from sklearn.model_selection import GridSearchCV
         param_grid = {
@@ -103,7 +107,6 @@ def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
         print(grid.best_params_)
         exit(0)
 
-    print(f'Model fitting: DIM:{len(X_train)}*{X_train.shape[-1]}', flush=True)
     if isinstance(solver, MLPClassifier):
         solver.fit(X_train.astype(np.float32), Y_train.astype(np.float32))
     else:
@@ -135,11 +138,11 @@ if __name__ == '__main__':
     # _solver = DecisionTreeClassifier()
     # + _solver = RandomForestClassifier(random_state=0, n_jobs=8). 3GB model, long processing. but 0.93 for new data
     _solver = MLPClassifier(random_state=0,
-                            solver='adam',
-                            activation='tanh',  # tuned
-                            hidden_layer_sizes=(20, 10,),  # tuned
-                            max_iter=200,
-                            alpha=0.0001,  # tuned
+                            solver='adam',  # sgd. todo: final training should be SGD. Check max_iter accordingly
+                            activation='tanh',  # tuned: tanh
+                            hidden_layer_sizes=(30, 10,),  # tuned
+                            max_iter=200,  # 2000 for sgd
+                            alpha=0.0001,  # tuned. https://scikit-learn.org/stable/auto_examples/neural_networks/plot_mlp_alpha.html
                             # verbose=10,
                             learning_rate='constant',  # tuned
                             learning_rate_init=0.02)
@@ -195,6 +198,8 @@ if __name__ == '__main__':
     # -3/4: 0.96/0.97/0.92/0.94/0.93/0.83; Tuned params. Even better than prev.
     # > -3/4: 0.96/0.98/0.92/0.95/0.95/0.93; Fixed labeling bug
     # -3/4: 0.96/0.99/0.93/0.99/0.96/0.98; equalize hist. BAD. WRONG LABELING
+    # =================================================================================================================
+    # 2023.03.02. Data & Labeling changed for better tree-prediction. -3/4(astd/astd2/astd3, adam), 0.95/0.96/0.96/0.95/0.88
     # =================================================================================================================
     _filters_nb, _layers_nb = -3, 4
     _solver_name = _solver.__class__.__name__

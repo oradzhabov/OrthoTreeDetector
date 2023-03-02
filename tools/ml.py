@@ -14,6 +14,9 @@ def apply_filter(img, filters, dtype=np.float16):
 
 
 def get_mean_std(img, ksize):
+    # Input could be np.uint8, which will corrupt data by following logic
+    img = img.astype(np.float32)
+
     mu = gaussian_filter(img, sigma=ksize/3)
     mu2 = gaussian_filter(img * img, sigma=ksize/3)
 
@@ -73,7 +76,7 @@ def process_pyr(img, generator, layers_nb=3, dtype=np.float16):
                 accum_ind_arr[layer_ind2][i] = cv2.resize(accum_ind_arr[layer_ind2][i].astype(np.float32),
                                                           (accum_ind_arr[layer_ind2][i].shape[1]*2,
                                                            accum_ind_arr[layer_ind2][i].shape[0]*2),
-                                                          interpolation=cv2.INTER_NEAREST).astype(dtype)
+                                                          interpolation=cv2.INTER_CUBIC).astype(dtype)  # ATTENTION: Features approximation
             ind = layer_ind2 - layer_ind
             if accum_ind_arr[layer_ind2][0].shape != shape_arr[ind]:
                 for i in range(len(accum_ind_arr[layer_ind2])):

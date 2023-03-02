@@ -12,42 +12,31 @@ from .ml import process_pyr
 from .ml import apply_filter, get_mean_std, get_brief_space, get_lbp_space
 
 
-def get_ndvi(ortho, walls_cosine, use_old_approach):
-    hsv = cv2.cvtColor(ortho.astype(np.uint8), cv2.COLOR_BGR2HSV)
+def get_ndvi(ortho, walls_cosine, sloped_is_ground_or_tree):
     ortho = ortho/np.float32(255)
     ndvi = (2 * (ortho[..., 1] ** 2) - np.max(ortho[..., [0, 2]], axis=-1) * (ortho[..., 0] + ortho[..., 2])) / \
            (2 * (ortho[..., 1] ** 2) + np.max(ortho[..., [0, 2]], axis=-1) * (ortho[..., 0] + ortho[..., 2]))
-    #ndvi = (ortho[..., 1] - ortho[..., 0] + ortho[..., 1] - ortho[..., 2]) / \
-    #       (ortho[..., 1] + ortho[..., 0] + ortho[..., 1] + ortho[..., 2])
     ndvi[np.isnan(ndvi)] = -255
     ndvi[np.isinf(ndvi)] = -255
     ndvi[np.isnan(walls_cosine)] = -255
-    #
-    # Cases:
-    # 1. Strong NDVI could have any brightens. Light-green(almost white) trees, sunshine.
-    # 2. Not strong NDVI could be applied with low brightens only. To avoid suppressing green ground-surface (copper
-    #    slag), take in account the slope.
-    """
-    result = np.where((ndvi > 0.2) |
-                      ((ndvi > 0.05) & (hsv[..., 2] <= 158) & (walls_cosine > np.cos(np.radians(45)))),
-                      1, -1)
-    """
+
     result = np.zeros(shape=ndvi.shape, dtype=np.uint8)
-    relax = 1.0/1.0
-    if use_old_approach:
-        cond1 = np.where((ndvi > 0.05 * relax) & (hsv[..., 2] <= 158))  # old version
-    else:
-        cond1 = np.where((ndvi > 0.05 * relax) & (hsv[..., 2] <= 158) & (walls_cosine > np.cos(np.radians(45*relax)))) # soft green
-    #cond2 = np.where((ndvi > 0.12 * relax) & (hsv[..., 2] <= 50) & (walls_cosine <= np.cos(np.radians(45*relax))))  # ?
-    cond3 = np.where(ndvi > 0.2 * relax)  # strong green
+    cond_any_green = ndvi > 0.05
+    cond_sloped = walls_cosine < np.cos(np.radians(45))
+
+    # 0: background
+    # 1: usual bench
+    # 2: green bench
+    # 3: flat part of trees
+    # 4: sloped part of trees
+    result[cond_sloped] = 1
+    result[cond_any_green] = 3
+    result[cond_any_green & cond_sloped] = 2 if sloped_is_ground_or_tree else 4
     conde = np.where(ndvi == -255)        # error-noise
-    result[cond1] = 1
-    #result[cond2] = 2
-    result[cond3] = 3
     return result, conde
 
 
-def get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb, is_inference, mask_geojson=None, mask_class_ind=-1):
+def get_xy(proj_dir, wnd, sloped_is_ground_or_tree, filters_nb, layers_nb, is_inference, mask_geojson=None, mask_class_ind=-1):
     # note: np.float16 do not provide convergence in solvers with default iters
     dtype = np.float32
 
@@ -70,8 +59,8 @@ def get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb, is_inference,
     # bgr = (equalize_hist(bgr, mask=cos_mask) * 255).astype(np.uint8)
     hsv = cv2.cvtColor(bgr.astype(np.uint8), cv2.COLOR_BGR2HSV)
     cv2.imwrite('w.png', bgr)
-    mask, mask_err = get_ndvi(bgr, w_cos, use_old_approach)
-    cv2.imwrite('w_m.png', mask / 3 * 255)
+    mask, mask_err = get_ndvi(bgr, w_cos, sloped_is_ground_or_tree)
+    cv2.imwrite('w_m.png', mask / 4 * 255)
 
     if os.path.exists(mask_fpath):
         print(f'Use file {mask_fpath} for labeling. CRS should be EPSG:4326', flush=True)
@@ -80,11 +69,11 @@ def get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb, is_inference,
             shapes = [feature["geometry"] for feature in tree_dict['features']]
         with rio.open(cosine_fpath) as src:
             for i in range(len(shapes)):
-                shapes[i] = rio.warp.transform_geom("EPSG:32719", src.crs, shapes[i])
+                shapes[i] = rio.warp.transform_geom("EPSG:4326", src.crs, shapes[i])
             out_image, transformed = rasterio.mask.mask(src, shapes, nodata=np.nan, filled=True)
             out_image = out_image[0]
-            mask.fill(255)  # Do not take in account everything except this filter.
             mask[~np.isnan(out_image)] = mask_class_ind
+            mask[(w_cos < np.cos(np.radians(45))) & (~np.isnan(out_image))] = 4  # ATTENTION: expecting only tree mask so sloped only trees
 
     if filters_nb > 0:
         filters = build_filters(filters_nb)
@@ -92,10 +81,24 @@ def get_xy(proj_dir, wnd, use_old_approach, filters_nb, layers_nb, is_inference,
     elif filters_nb == 0:
         features = w_cos
     else:
-        features = process_pyr(w_cos, lambda x: get_mean_std(x, -filters_nb), layers_nb, dtype)
+        f1 = process_pyr(w_cos, lambda x: get_mean_std(x, -filters_nb), layers_nb, dtype)
+        f2 = process_pyr(w_cos, lambda x: [get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
+        f3 = process_pyr(w_cos, lambda x: [get_mean_std(get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
+        if True:
+            features = np.dstack([f1, f2, f3])
+        else:
+            f4 = process_pyr(hsv[..., 0], lambda x: get_mean_std(x, -filters_nb), layers_nb, dtype)
+            f5 = process_pyr(hsv[..., 0], lambda x: [get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
+            f6 = process_pyr(hsv[..., 0], lambda x: [get_mean_std(get_mean_std(get_mean_std(x, -filters_nb)[1], -filters_nb)[1], -filters_nb)[1]], layers_nb, dtype)
+            features = np.dstack([f1, f2, f3, f4, f5, f6])
+    save_channels = False
+    if save_channels:
+        for i in range(features.shape[-1]):
+            feature = features[..., i]
+            cv2.imwrite(f'feature_{i}.png', (feature/np.nanmax(feature)*255).astype(np.uint8))
 
     mask[mask_err] = 255
-    features = np.dstack([features, bgr, hsv])
+    features = np.dstack([features, bgr, hsv[..., 0]])  # seems with bgr, hsv has only [0]-channel valuable. todo: Maybe [0,1]-channels have better accuracy? [2]-ch definetely defined earlier as mean in pyramid.
     # features = features[..., [0, 4, 5]]  # RFE suggests using: Cos,Hue,Saturation
     X = features.reshape(-1, features.shape[-1])
     Y = mask.reshape(-1)

@@ -38,7 +38,7 @@ if __name__ == '__main__':
     proj_dir2 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53508'
     wnd2 = (0, 0, 8589, 4308)  # half of all, GOOD for TRAIN TREE
     proj_dir3 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52654'
-    wnd3 = (0, 0, 5900, 10000)  # all pure new
+    wnd3 = (0, 0, 5900999, 10000999)  # all pure new
     proj_dir4 = r'D:\Program Files\Git\mnt\airzaar\execution\highwall\20861'
     wnd4 = (0, 0, 59000, 10000)  # only trees
 
@@ -65,16 +65,22 @@ if __name__ == '__main__':
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.93_0.95'  # 2/3 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.94_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, 10 layers  +++
     # _checkpoint = '0_0_2100_1800__7682_190_778_3786/0.96_0.97'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP  ++++
-    _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999/0.96_0.98'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP, fixed err  ++++
-    # _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999/0.96_0.99'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP, fixed err, update data, equalize hist  ---. Wrong Labeling
-    # _checkpoint = '990_210_680_670__7530_690_1000_1650/0.91_0.95'
+    ## _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999/0.96_0.98'  # -3/4 pyr(cos, astd) + rgb + hsv, data up-sampled, tuned MLP, fixed err  ++++. Leader before 2023.03.02
+    #
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.93_0.94'  # min/0.1(-3/4 astd)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.93_0.93'  # min/0.1(-3/3 astd/astd2/astd3)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.94_0.94'  # min/0.1(-3/4 astd/astd2/astd3)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.97_0.96'  # min/0.1(-3/6 astd/astd2/astd3)
+    #_checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.96_0.95'  # min/0.1(-3/6///
+    _checkpoint = '0_0_2100_1800__7682_190_778_3786__0_0_9999999_9999999__0_0_9999999_9999999/0.95_0.96'   # max/1(-3/4 astd/astd2/astd3) adam
+    #
     _solver_dir = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}/{_checkpoint}'
 
-    main(_solver_dir, proj_dir1, wnd1, False, _filters_nb, _layers_nb)
-    # main(_solver_dir, proj_dir2, wnd2, True, _filters_nb, _layers_nb)
-    # main(_solver_dir, proj_dir3, wnd3, True, _filters_nb, _layers_nb)  # unobserved
-    # main(_solver_dir, proj_dir4, wnd4, True, _filters_nb, _layers_nb)
+    main(_solver_dir, proj_dir1, wnd1, True, _filters_nb, _layers_nb)
+    # main(_solver_dir, proj_dir2, wnd2, False, _filters_nb, _layers_nb)
+    # main(_solver_dir, proj_dir3, wnd3, False, _filters_nb, _layers_nb)  # unobserved
+    ## main(_solver_dir, proj_dir4, wnd4, False, _filters_nb, _layers_nb)
     # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\52521', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # bad data, with gaps/holes in reconstruction
     # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\53501', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # old filter could resolve by own
-    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\47269', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # lot of dark trees
-    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\28101', (0, 0, 59000, 100000), True, _filters_nb, _layers_nb)  # Lot of false positives
+    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\47269', (0, 0, 59000, 100000), False, _filters_nb, _layers_nb)  # lot of dark trees
+    # main(_solver_dir, r'D:\Program Files\Git\mnt\airzaar\execution\highwall\28101', (0, 0, 59000, 100000), False, _filters_nb, _layers_nb)  # Lot of false positives.
