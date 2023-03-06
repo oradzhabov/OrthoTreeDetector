@@ -12,11 +12,11 @@ class DataSource:
         self.mask_geojson = mask_geojson
         self.mask_class = mask_class
 
-    def load(self, filters_nb, layers_nb, is_inference):
+    def load(self, filters_nb, layers_nb, is_inference, working_scale=1.0, skip_ground_class=True):
         if self.mask_geojson is None:
-            X, Y, shape, cond = get_xy(self.proj_dir, self.wnd, self.sloped_is_ground_or_tree, filters_nb, layers_nb, is_inference)
+            X, Y, shape, cond = get_xy(self.proj_dir, self.wnd, self.sloped_is_ground_or_tree, filters_nb, layers_nb, is_inference, working_scale, skip_ground_class)
         else:
-            X, Y, shape, cond = get_xy(self.proj_dir, self.wnd, False, filters_nb, layers_nb, is_inference, self.mask_geojson, self.mask_class)
+            X, Y, shape, cond = get_xy(self.proj_dir, self.wnd, False, filters_nb, layers_nb, is_inference, working_scale, skip_ground_class, self.mask_geojson, self.mask_class)
         if len(Y) == 0:
             return [], [], [], []
         I_train, I_test = train_test_split(np.arange(len(X)), random_state=0, train_size=self.train_size)

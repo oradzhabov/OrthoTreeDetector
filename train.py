@@ -16,17 +16,18 @@ from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils import resample
 from tools.data_source import DataSource
 
-c = 1
+c = 0.1
+_working_scale = 1
 data_src_arr = list()
-data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/40562', True, 0.99*c, (0, 0, 2100, 1800)))  # green slopes
-data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/53508', False, 0.75*c, (7682, 190, 8460-7682, 3976-190)))  # half of all, GOOD for TRAIN TREE
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/40562', True, 0.99*c, (0, 0, 2100999, 1800999)))  # green slopes
+data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/53508', False, 0.75*c, (int(7682/5/_working_scale), int(190/5/_working_scale), int((8460-7682)/5/_working_scale), int((3976-190)/5/_working_scale))))  # half of all, GOOD for TRAIN TREE
 ## data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/20861', False, 0.75*c))  # only trees, red, yellow, cannot be detected
 #
 data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/28101', False, 0.75*c, mask_geojson='tree.geojson', mask_class=3))  # lot of light trees. Has tree.geojson
 data_src_arr.append(DataSource('D:/Program Files/Git/mnt/airzaar/execution/highwall/47269', False, 0.75*c, mask_geojson='tree.geojson', mask_class=3))  # lot of dark trees. Has tree.geojson
 
 
-def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
+def main(solver_path, solver, filters_nb, layers_nb, resampling_code, working_scale=1.0, skip_ground_class=True):
     assert layers_nb < 7
 
     print('Getting data...', flush=True)
@@ -36,7 +37,7 @@ def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
     X_test = list()
     Y_test = list()
     for d in data_src_arr:
-        x_tr, y_tr, x_tst, y_tst = d.load(filters_nb, layers_nb, False)
+        x_tr, y_tr, x_tst, y_tst = d.load(filters_nb, layers_nb, False, working_scale, skip_ground_class)
         if len(y_tr) > 0:
             X_train.append(x_tr)
             Y_train.append(y_tr)
@@ -51,19 +52,20 @@ def main(solver_path, solver, filters_nb, layers_nb, resampling_code):
     sample_weight = None
     if resampling_code:
         # Resample data for over/under sampling minority/majority classes
-        samples_count = [np.count_nonzero(Y_train == i) for i in range(5)]
+        start_class_ind = 1 if skip_ground_class else 0
+        samples_count = [np.count_nonzero(Y_train == i) for i in range(start_class_ind, 5)]
         print(f'Resampling. Source samples count: {samples_count}')
         max_samples = max(samples_count)
         min_samples = min(samples_count)
         avg_samples = int(np.mean(samples_count)),
         X_arr = list()
         Y_arr = list()
-        for i in range(5):
+        for i in range(start_class_ind, 5):
             class_ind = (Y_train == i)
             X_oversampled, Y_oversampled = resample(X_train[class_ind],
                                                     Y_train[class_ind],
                                                     replace=True,
-                                                    n_samples=max_samples,
+                                                    n_samples=min_samples,
                                                     random_state=0)
             X_arr.append(X_oversampled)
             Y_arr.append(Y_oversampled)
@@ -140,7 +142,7 @@ if __name__ == '__main__':
     _solver = MLPClassifier(random_state=0,
                             solver='sgd',  # sgd. todo: final training should be SGD. Check max_iter accordingly
                             activation='tanh',  # tuned: tanh
-                            hidden_layer_sizes=(30, 10,),  # tuned
+                            hidden_layer_sizes=(30, 20, 10,),  # tuned
                             max_iter=2000,  # 2000 for sgd
                             alpha=0.001,  # tuned. https://scikit-learn.org/stable/auto_examples/neural_networks/plot_mlp_alpha.html
                             # verbose=10,
@@ -204,8 +206,8 @@ if __name__ == '__main__':
     # =================================================================================================================
     _filters_nb, _layers_nb = -3, 4
     _solver_name = _solver.__class__.__name__
-    _solver_path = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_filters_nb}_{_layers_nb}'
+    _solver_path = f'{os.path.dirname(os.path.abspath(__file__))}/models/{_solver_name}/{_working_scale:.1f}/{_filters_nb}_{_layers_nb}'
 
-    main(_solver_path, _solver, _filters_nb, _layers_nb, isinstance(_solver, MLPClassifier))
+    main(_solver_path, _solver, _filters_nb, _layers_nb, isinstance(_solver, MLPClassifier), _working_scale)
     print('Finished', flush=True)
 # https://michael-fuchs-python.netlify.app/2021/02/03/nn-multi-layer-perceptron-classifier-mlpclassifier/

@@ -13,6 +13,16 @@ def apply_filter(img, filters, dtype=np.float16):
     return stack
 
 
+def apply_accum_filter(img, filters, dtype=np.float16):
+    accum = np.ones(shape=img.shape[:2], dtype=dtype) * -999999.9
+    accum_ind = np.zeros(shape=img.shape[:2], dtype=dtype)
+    for kern_ind, kern in enumerate(filters):
+        fimg = cv2.filter2D(img, -1, kern).astype(dtype)
+        accum_ind[fimg > accum] = kern_ind
+        accum = np.maximum(accum, fimg)
+    return [accum_ind, accum]
+
+
 def get_mean_std(img, ksize):
     # Input could be np.uint8, which will corrupt data by following logic
     if not isinstance(img, np.ndarray) or (isinstance(img, np.ndarray) and img.dtype != np.float32):
@@ -69,7 +79,7 @@ def process_pyr(img, generator, layers_nb=3, dtype=np.float16):
         stack = generator(img_scaled)
         shape_arr.append(img_scaled.shape)
         scale = 2**(layer_ind + 1)
-        img_scaled = cv2.resize(img, (img.shape[1] // scale, img.shape[0] // scale), interpolation=cv2.INTER_NEAREST)
+        img_scaled = cv2.resize(img, (img.shape[1] // scale, img.shape[0] // scale), interpolation=cv2.INTER_CUBIC)
         accum_ind_arr.append(stack)
     for layer_ind in range(1, layers_nb):
         for layer_ind2 in range(layer_ind, layers_nb):
